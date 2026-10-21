@@ -1,0 +1,17 @@
+[project]
+name = "ai110-module2show-pawpal-starter"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Monica Martin", email = "31086980+monicam85@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+ai110-module2show-pawpal-starter = "ai110_module2show_pawpal_starter:main"
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"

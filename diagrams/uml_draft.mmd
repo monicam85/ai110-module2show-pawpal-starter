@@ -1,0 +1,116 @@
+classDiagram
+    %% PawPal+ draft UML (design phase, before implementation)
+    %%
+    %% Requirements (from README):
+    %%  R1 Enter basic owner + pet info
+    %%  R2 Add/edit tasks (duration + priority at minimum; walks, feeding, meds, enrichment, grooming)
+    %%  R3 Consider constraints: time available, priority, owner preferences
+    %%  R4 Generate a daily plan
+    %%  R5 Explain why the plan was chosen
+    %%  R6 Display the plan clearly
+    %%  R7 Tests for key scheduling behaviors
+    %%
+    %% Edge cases to handle:
+    %%  - Total task time exceeds available time -> drop/defer lower priority, report skipped tasks
+    %%  - No tasks, or no pets, or zero available time -> empty plan with an explanation
+    %%  - Invalid input: duration <= 0, blank names, unknown priority
+    %%  - Ties in priority -> deterministic tie-break (shorter duration, then insertion order)
+    %%  - A task that alone is longer than the whole day window
+    %%  - Fixed-time tasks (e.g. meds at 08:00) that overlap each other or other tasks
+    %%  - Owner preferences conflict with priority (e.g. "no walks before 9") -> define precedence
+    %%  - Multiple pets sharing one owner's limited time
+    %%  - Recurring tasks (daily/weekly) appearing only on matching days
+    %%  - Editing/removing a task after a plan was generated -> plan becomes stale
+    %%  - Duplicate tasks (same title for same pet)
+
+    class Owner {
+        +str name
+        +int available_minutes
+        +time day_start
+        +time day_end
+        +list~str~ preferences
+        +list~Pet~ pets
+        +add_pet(pet Pet) None
+        +remove_pet(pet_name str) None
+        +get_all_tasks() list~Task~
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +str breed
+        +int age
+        +list~Task~ tasks
+        +add_task(task Task) None
+        +edit_task(task_id str, changes dict) Task
+        +remove_task(task_id str) None
+        +get_pending_tasks() list~Task~
+    }
+
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+    }
+
+    class Frequency {
+        <<enumeration>>
+        ONCE
+        DAILY
+        WEEKLY
+    }
+
+    class Task {
+        +str id
+        +str title
+        +str category
+        +int duration_minutes
+        +Priority priority
+        +Frequency frequency
+        +time fixed_time
+        +bool completed
+        +validate() None
+        +is_due(day date) bool
+        +mark_complete() None
+    }
+
+    class ScheduledItem {
+        +Task task
+        +Pet pet
+        +time start
+        +time end
+        +str reason
+        +overlaps(other ScheduledItem) bool
+    }
+
+    class DailyPlan {
+        +date day
+        +list~ScheduledItem~ items
+        +list~Task~ skipped
+        +int total_minutes
+        +add_item(item ScheduledItem) None
+        +explain() str
+        +to_rows() list~dict~
+    }
+
+    class Scheduler {
+        +Owner owner
+        +generate_plan(day date) DailyPlan
+        +sort_tasks(tasks list~Task~) list~Task~
+        +filter_due_tasks(tasks list~Task~, day date) list~Task~
+        +fit_to_time(tasks list~Task~) tuple
+        +detect_conflicts(items list~ScheduledItem~) list~tuple~
+        +apply_preferences(tasks list~Task~) list~Task~
+    }
+
+    Owner "1" *-- "0..*" Pet : owns
+    Pet "1" *-- "0..*" Task : has
+    Task --> Priority : uses
+    Task --> Frequency : uses
+    Scheduler "1" --> "1" Owner : plans for
+    Scheduler ..> DailyPlan : creates
+    DailyPlan "1" *-- "0..*" ScheduledItem : contains
+    ScheduledItem "0..*" --> "1" Task : schedules
+    ScheduledItem "0..*" --> "1" Pet : for
+    DailyPlan "1" o-- "0..*" Task : skipped

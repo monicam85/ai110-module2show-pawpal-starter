@@ -1,15 +1,101 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
+    %% Final PawPal+ UML, matching pawpal_system.py.
+    %% Changes from the draft (uml_draft.mmd):
+    %%  - Task gained last_completed; mark_complete takes an optional day
+    %%  - Scheduler gained private helpers _pet_for and _first_gap
+    %%  - Module-level helpers _minutes / _to_time convert time <-> minutes
 
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Owner {
+        +str name
+        +int available_minutes
+        +time day_start
+        +time day_end
+        +list~str~ preferences
+        +list~Pet~ pets
+        +add_pet(pet Pet) None
+        +remove_pet(pet_name str) None
+        +get_all_tasks() list~Task~
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        +str name
+        +str species
+        +str breed
+        +int age
+        +list~Task~ tasks
+        +add_task(task Task) None
+        +edit_task(task_id str, changes dict) Task
+        +remove_task(task_id str) None
+        +get_pending_tasks() list~Task~
     }
 
-    ClassName --> AnotherClass : relationship
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+    }
+
+    class Frequency {
+        <<enumeration>>
+        ONCE
+        DAILY
+        WEEKLY
+    }
+
+    class Task {
+        +str id
+        +str title
+        +str category
+        +int duration_minutes
+        +Priority priority
+        +Frequency frequency
+        +time fixed_time
+        +bool completed
+        +date last_completed
+        +validate() None
+        +is_due(day date) bool
+        +mark_complete(day date) None
+    }
+
+    class ScheduledItem {
+        +Task task
+        +Pet pet
+        +time start
+        +time end
+        +str reason
+        +overlaps(other ScheduledItem) bool
+    }
+
+    class DailyPlan {
+        +date day
+        +list~ScheduledItem~ items
+        +list~Task~ skipped
+        +int total_minutes
+        +add_item(item ScheduledItem) None
+        +explain() str
+        +to_rows() list~dict~
+    }
+
+    class Scheduler {
+        +Owner owner
+        +generate_plan(day date) DailyPlan
+        +sort_tasks(tasks list~Task~) list~Task~
+        +filter_due_tasks(tasks list~Task~, day date) list~Task~
+        +fit_to_time(tasks list~Task~) tuple
+        +detect_conflicts(items list~ScheduledItem~) list~tuple~
+        +apply_preferences(tasks list~Task~) list~Task~
+        -_pet_for(task Task) Pet
+        -_first_gap(items list~ScheduledItem~, duration int, start int, end int) int$
+    }
+
+    Owner "1" *-- "0..*" Pet : owns
+    Pet "1" *-- "0..*" Task : has
+    Task --> Priority : uses
+    Task --> Frequency : uses
+    Scheduler "1" --> "1" Owner : plans for
+    Scheduler ..> DailyPlan : creates
+    DailyPlan "1" *-- "0..*" ScheduledItem : contains
+    ScheduledItem "0..*" --> "1" Task : schedules
+    ScheduledItem "0..*" --> "1" Pet : for
+    DailyPlan "1" o-- "0..*" Task : skipped
